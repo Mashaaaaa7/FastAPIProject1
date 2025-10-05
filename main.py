@@ -1,6 +1,8 @@
+
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -55,3 +57,13 @@ else:
     @app.get("/")
     def root():
         return {"message": "Frontend not built. Run frontend dev on :5173 or build into frontend/dist."}
+
+@app.delete("/api/delete_cards/{filename}")
+async def delete_cards(filename: str):
+    pdf_path = os.path.join(UPLOAD_DIR, filename)
+    if os.path.exists(pdf_path):
+        os.remove(pdf_path)
+    else:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return {"success": True, "message": f"{filename} удалён"}
