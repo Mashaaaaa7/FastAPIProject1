@@ -19,21 +19,6 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# ✅ Кастомный обработчик для ValidationError (должен быть после создания app)
-from fastapi.responses import JSONResponse
-from fastapi import Request
-
-@app.exception_handler(ValidationError)
-async def validation_exception_handler(request: Request, exc: ValidationError):
-    return JSONResponse(
-        status_code=422,
-        content={
-            "success": False,
-            "error": "Ошибка валидации данных",
-            "details": str(exc)
-        }
-    )
-
 # CORS для связи с фронтендом
 app.add_middleware(
     CORSMiddleware,
@@ -88,11 +73,6 @@ async def root():
             "get_cards": "/api/decks/{name}/cards"
         }
     }
-
-@app.get("/api/health")
-async def health_check():
-    """Проверка здоровья сервера"""
-    return {"status": "healthy", "service": "flashcards-api"}
 
 @app.post("/api/upload", response_model=UploadResponse)
 async def upload_pdf(file: UploadFile = File(...)):
