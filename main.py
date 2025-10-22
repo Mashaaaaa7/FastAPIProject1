@@ -9,13 +9,16 @@ import os
 import shutil
 import sqlite3
 import logging
+import uuid
+from typing import List
+
 
 # ---------------------- НАСТРОЙКИ ----------------------
 app = FastAPI(title="Flashcards from PDF API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://127.0.0.1:3001"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -87,6 +90,16 @@ class CardsResponse(BaseModel):
     cards: List[Card]
     deck_name: str
     total: int
+
+# Обновите модель HistoryItem
+class HistoryItem(BaseModel):
+    id: Optional[int] = None
+    type: str
+    deck_name: str
+    timestamp: str
+    cards_count: Optional[int] = None
+    file_size: Optional[int] = None
+    user_email: Optional[str] = None
 
 # ---------------------- JWT ----------------------
 def create_token(email: str):
@@ -225,7 +238,131 @@ def delete_deck(deck_name: str):
     os.remove(path)
     return {"success": True, "message": f"Deck {deck_name} deleted"}
 
+
+# В разделе БАЗА ДАННЫХ добавьте создание таблицы для истории
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+
+    # Таблица пользователей (уже есть)
+    conn.execute("""
+                 CREATE TABLE IF NOT EXISTS users
+                 (
+                     id
+                     INTEGER
+                     PRIMARY
+                     KEY
+                     AUTOINCREMENT,
+                     email
+                     TEXT
+                     UNIQUE
+                     NOT
+                     NULL,
+                     password_hash
+                     TEXT
+                     NOT
+                     NULL,
+                     name
+                     TEXT
+                     DEFAULT
+                     '',
+                     theme
+                     TEXT
+                     DEFAULT
+                     'light'
+                 )
+                 """)
+
+    # НОВАЯ таблица для истории действий
+    conn.execute("""
+                 CREATE TABLE IF NOT EXISTS history
+                 (
+                     id
+                     INTEGER
+                     PRIMARY
+                     KEY
+                     AUTOINCREMENT,
+                     type
+                     TEXT
+                     NOT
+                     NULL,
+                     deck_name
+                     TEXT
+                     NOT
+                     NULL,
+                     timestamp
+                     TEXT
+                     NOT
+                     NULL,
+                     cards_count
+                     INTEGER,
+                     file_size
+                     INTEGER,
+                     user_email
+                     TEXT
+                 )
+                 """)
+
+    conn.commit()
+    conn.close()
+
+
+# Обновите endpoints для истории
+@app.get("/api/history")
+def get_history():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+                   SELECT id, type, deck_name, timestamp, cards_count, file_size, user_email
+                   FROM history
+                   ORDER BY timestamp DESC
+                   """)
+
+    history_items = []
+    for row in cursor.fetchall():
+        history_items.append({
+            "id": str(row[0]),
+            "type": row[1],
+            "deck_name": row[2],
+            "timestamp": row[3],
+            "cards_count": row[4],
+            "file_size": row[5],
+            "user_email": row[6]
+        })
+
+    conn.close()
+    return {"success": True, "history": history_items}
+
+
+@app.post("/api/history")
+def add_history_item(item: HistoryItem):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+                   INSERT INTO history (type, deck_name, timestamp, cards_count, file_size, user_email)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   """, (item.type, item.deck_name, item.timestamp, item.cards_count, item.file_size, item.user_email))
+
+    conn.commit()
+    conn.close()
+
+    return {"success": True}
+
+
+@app.delete("/api/history")
+def clear_history():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM history")
+
+    conn.commit()
+    conn.close()
+
+    return {"success": True}
 # ---------------------- ROOT ----------------------
 @app.get("/")
 async def root():
     return {"message": "Flashcards API is running 🚀"}
+
