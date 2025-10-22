@@ -91,7 +91,7 @@ class CardsResponse(BaseModel):
     deck_name: str
     total: int
 
-# Обновите модель HistoryItem
+# Обновите модель
 class HistoryItem(BaseModel):
     id: Optional[int] = None
     type: str
