@@ -72,7 +72,7 @@ def list_decks():
     return {"success": True, "decks": files_storage}
 
 
-@router.post("/decks/{deck_name}/cards")
+@router.get("/decks/{deck_name}/cards")
 async def create_cards(deck_name: str):
     # Проверяем есть ли файл
     file_exists = any(f["name"] == deck_name for f in files_storage)
@@ -102,19 +102,38 @@ async def create_cards(deck_name: str):
 async def delete_deck(deck_name: str):
     # Ищем и удаляем файл
     global files_storage
-    file_exists = any(f["name"] == deck_name for f in files_storage)
-    if not file_exists:
+
+    # Находим индекс первого файла с таким именем
+    file_index = None
+    for i, f in enumerate(files_storage):
+        if f["name"] == deck_name:
+            file_index = i
+            break
+
+    if file_index is None:
         raise HTTPException(404, "PDF file not found")
 
-    # Удаляем из хранилища
-    files_storage = [f for f in files_storage if f["name"] != deck_name]
+    # Получаем информацию о файле перед удалением
+    file_to_delete = files_storage[file_index]
+
+    # Удаляем только один файл по индексу
+    files_storage.pop(file_index)
+
+    # Также удаляем физический файл
+    file_path = os.path.join(UPLOAD_DIR, deck_name)
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            logger.info(f"🗑️ Физический файл удален: {file_path}")
+    except Exception as e:
+        logger.error(f"❌ Ошибка удаления физического файла: {e}")
 
     # Добавляем запись в историю
     history_record = {
         "action": "delete_deck",
         "deck_name": deck_name,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "details": f"Deleted deck: {deck_name}"
+        "details": f"Deleted deck: {deck_name} (size: {file_to_delete['file_size']} bytes)"
     }
     history_storage.append(history_record)
 
