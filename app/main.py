@@ -2,7 +2,6 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import engine, Base
 import app.models
 
 from app.minio_client import ensure_bucket, MINIO_BUCKET_PDF
