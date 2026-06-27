@@ -26,7 +26,10 @@ jobs:
           --health-retries=5
 
     env:
-      DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/test_db
+      DATABASE_URL: postgresql+psycopg2://test_user:test_password@localhost:5432/test_db
+      OPENAI_API_KEY: sk-fake-for-ci
+      GROQ_API_KEY: gsk_fake-for-ci
+      SECRET_KEY: ci-secret-key
 
     steps:
       - name: Checkout
@@ -42,14 +45,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install ruff
 
       - name: Run Ruff
-        run: |
-          ruff check .
+        run: ruff check .
 
       - name: Run tests
-        run: |
-          pytest --maxfail=1 --disable-warnings -q
+        run: pytest --maxfail=1 --disable-warnings -q --ignore=.venv
 
   build-push:
     runs-on: ubuntu-latest
