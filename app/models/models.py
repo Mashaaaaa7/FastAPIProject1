@@ -1,11 +1,10 @@
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import relationship
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Enum
 import enum
 import uuid
 from sqlalchemy import JSON
-
-Base = declarative_base()
+from app.database import Base
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -67,7 +66,7 @@ class ActionLog(Base):
     user_id = Column(Integer, ForeignKey('users.user_id'), nullable=False, index=True)
     file_id = Column(Integer, ForeignKey('pdf_files.id'), nullable=False, index=True)
     action = Column(Enum(ActionType), nullable=False)
-    details = Column(JSON, nullable=True)  # дополнительная информация
+    details = Column(JSON, nullable=True)
     timestamp = Column(DateTime, default=get_msk_time)
 
     user = relationship("User", back_populates="action_logs")
