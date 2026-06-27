@@ -1,4 +1,3 @@
-# main.py
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -16,20 +15,17 @@ from app.database import Base, engine
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+
     try:
         ensure_bucket(MINIO_BUCKET_PDF)
     except Exception as e:
         print(f"⚠️ MinIO недоступен: {e}")
 
     qa = QAGeneratorService()
-    # Проверяем, существует ли метод _initialize
-    if hasattr(qa, "_initialize"):
-        try:
-            await asyncio.to_thread(qa._initialize)
-        except Exception as e:
-            print(f"⚠️ Ошибка инициализации QAGenerator: {e}")
-    else:
-        print("ℹ️ QAGeneratorService не имеет метода _initialize, пропускаем")
+    try:
+        await asyncio.to_thread(qa._initialize)
+    except Exception as e:
+        print(f"⚠️ QAGenerator не инициализирован: {e}")
 
     app.state.qa_service = qa
     yield
