@@ -1,17 +1,21 @@
-from contextlib import asynccontextmanager
 import asyncio
-
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.database import engine, Base
+import app.models
 
 from app.minio_client import ensure_bucket, MINIO_BUCKET_PDF
 from app.services.qa_generator_service import QAGeneratorService
 from app.endpoints import auth, profile, pdf, admin
 from app.routers import dictionary, seo, landing
 
+from app.database import Base, engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+
     try:
         ensure_bucket(MINIO_BUCKET_PDF)
     except Exception as e:

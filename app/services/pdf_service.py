@@ -90,21 +90,13 @@ class PDFService:
 
         return pdf_file
 
-    def process_pdf_sync(
-        self,
-        file_id: int,
-        file_key: str,
-        filename: str,
-        user_id: int,
-        max_cards: int,
-    ):
+    def process_pdf_sync(self, file_id, file_key, filename, user_id, max_cards):
         db = SessionLocal()
         tmp_path = None
+        pdf_repo = PDFRepository(db)
+        history_repo = HistoryRepository(db)
+        action_log_repo = ActionLogRepository(db)
         try:
-            pdf_repo = PDFRepository(db)
-            history_repo = HistoryRepository(db)
-            action_log_repo = ActionLogRepository(db)
-
             from app.minio_client import client
 
             try:
@@ -124,9 +116,7 @@ class PDFService:
             downloaded_size = os.path.getsize(tmp_path)
             print(f"📥 Скачано {downloaded_size} байт в {tmp_path}")
             if downloaded_size == 0:
-                raise Exception(
-                    f"Скачанный файл пуст, ожидалось {info.size} байт"
-                )
+                raise Exception(f"Скачанный файл пуст, ожидалось {info.size} байт")
 
             flashcards = self.qa_service.process_pdf(tmp_path, max_cards)
 
@@ -148,13 +138,14 @@ class PDFService:
             )
 
             db.commit()
+
         except Exception as e:
             pdf_repo.update_status(file_id, ProcessingStatus.FAILED)
             db.commit()
             import traceback
-
             traceback.print_exc()
             print(f"Ошибка обработки PDF {file_id}: {e}")
+
         finally:
             db.close()
             if tmp_path and os.path.exists(tmp_path):
